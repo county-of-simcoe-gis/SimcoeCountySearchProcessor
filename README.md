@@ -3,6 +3,8 @@
 This app processes the data behind the search component of our NodeJS [WebApi](https://github.com/county-of-simcoe-gis/SimcoeCountyWebApi).
 It accepts WFS urls as the data source. This would then be scheduled to run overnight.
 
+\*\* This is still a work in progress and will be adjusted when pushed to production.
+
 ## Getting Started
 
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
