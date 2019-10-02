@@ -24,7 +24,7 @@ F5 (Debug)
 
 ## Deployment
 
-You would run the main.py like any other python file. <Path to Your Python Exe> main.py
+You would run the main.py like any other python file. "Path to Your Python Exe" main.py
 
 ## Built With
 
