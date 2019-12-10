@@ -28,9 +28,7 @@ F5 (Debug)
 
 You would run the main.py like any other python file. "Path to Your Python Exe" main.py
 
-## Built With
-
--   [React](https://reactjs.org/) - create-react-app
+## Built From Scratch
 
 ## Authors
 
