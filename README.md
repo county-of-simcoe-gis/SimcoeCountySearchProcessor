@@ -9,6 +9,8 @@ It accepts WFS urls as the data source. This would then be scheduled to run over
 
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
 
+The script to create the table is part of your WebApi project: https://github.com/county-of-simcoe-gis/SimcoeCountyWebApi/blob/master/sqlScript.sql
+
 ### Prerequisites
 
 ```
