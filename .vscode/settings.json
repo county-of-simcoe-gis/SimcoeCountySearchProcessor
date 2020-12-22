@@ -1,4 +1,4 @@
 {
-  "python.pythonPath": "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\Python37_64\\python.exe",
+  "python.pythonPath": "C:\\python\\3.8\\python.exe",
   "prettier.printWidth": 8000
 }

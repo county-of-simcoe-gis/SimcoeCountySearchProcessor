@@ -95,10 +95,6 @@ def insertFeature(row, feature):
             alias = None
 
     insertSqlTemplate = """ INSERT INTO public.tbl_search (\"name\", alias, \"type\", type_id, municipality,geojson,geojson_extent,geojson_point, location_id,priority) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"""
-    # print(name)
-    # print(alias)
-    # print(type)
-    # print(muni)
     values = (getInsertValue(name), getInsertValue(alias),
               getInsertValue(itemType), typeId, getInsertValue(muni), geometryGeojson, extentGeojson, pointGeojson, locationId, priority)
     a = postgres.executeNonQuery(connTabular, insertSqlTemplate, values)
@@ -129,7 +125,7 @@ dropIndex(connTabular, "DROP INDEX IF EXISTS tbl_search_trgm_idx_name;")
 dropIndex(connTabular, "DROP INDEX IF EXISTS tbl_search_trgm_idx_alias;")
 dropIndex(connTabular, "DROP INDEX IF EXISTS tbl_search_trgm_idx_priority;")
 
-rows = postgres.query(connTabular, 'SELECT id, "type", type_id, field_name, field_name_alias, muni_field_name, roll_number_field, run_schedule, priority, last_run, last_run_minutes,wfs_url FROM public.tbl_search_layers;')
+rows = postgres.query(connTabular, 'SELECT id, "type", type_id, field_name, field_name_alias, muni_field_name, roll_number_field, run_schedule, priority, last_run, last_run_minutes,wfs_url FROM public.tbl_search_layers order by type;')
 for row in rows:
     # GET START TIME
     startTime = datetime.now()
@@ -143,8 +139,8 @@ for row in rows:
     wfsUrl = row['wfs_url']
     runSchedule = row['run_schedule']
 
-    # if (runSchedule != 'ALWAYS'):
-    if (runSchedule != 'ONETIME'):
+    if (runSchedule != 'ALWAYS'):
+    # if (runSchedule != 'ONETIME'):
         continue
 
     print("Processing: " + itemType + " " + typeId)

@@ -15,7 +15,7 @@ def getConn(database='tabular'):
         conn = psycopg2.connect(**params)
         return conn
     except (Exception, psycopg2.DatabaseError) as error:
-        print(error)
+        print("Error: " + error)
 
 
 def query(conn, queryString):
@@ -29,7 +29,7 @@ def query(conn, queryString):
         #db_version = cur.fetchone()
         return cur.fetchall()
     except (Exception, psycopg2.DatabaseError) as error:
-        print(error)
+        print("Error: " + error)
     finally:
         cur.close()
 
@@ -45,7 +45,7 @@ def queryOne(conn, queryString):
         #db_version = cur.fetchone()
         return cur.fetchone()
     except (Exception, psycopg2.DatabaseError) as error:
-        print(error)
+        print("Error: " + error)
     finally:
         cur.close()
 
