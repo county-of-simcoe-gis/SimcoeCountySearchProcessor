@@ -9,3 +9,4 @@ sc_copyToServer.bat
 *.ini
 settings.json
 runme.bat
+deploy
