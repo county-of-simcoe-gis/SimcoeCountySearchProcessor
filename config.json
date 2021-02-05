@@ -1,3 +1,8 @@
 {
-    "fallbackMuniTable": "public.sc_simcoectyjurisdictions"
+    "fallbackMuniTable": "sde.sc_simcoectyjurisdictions",
+    "email": {
+        "smtp": "",
+        "fromAddress": "",
+        "toAddresses": [""]
+  }
 }

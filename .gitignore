@@ -6,5 +6,6 @@ sc_copyToServer.bat
 !.vscode/extensions.json
 *.code-workspace
 *.pyc
+*.ini
 settings.json
 runme.bat
