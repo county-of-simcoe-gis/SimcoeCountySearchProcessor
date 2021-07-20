@@ -10,12 +10,29 @@ from urllib.parse import parse_qs
 from xml.dom import minidom
 import xml.etree.ElementTree as ET
 import xmltodict
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 with open('config.json') as config_json:
     data = json.load(config_json)
 
 fallbackMuniTable = data['fallbackMuniTable']
 
+emailOptions = data['email']
+errorString = ''
+
+def sendEmail(subject, body):
+    server = smtplib.SMTP(emailOptions['smtp'])
+
+    msg = MIMEMultipart()
+    msg['Subject'] = subject
+    msg.attach(MIMEText(body, 'html'))
+
+    # SEND
+    server.sendmail(emailOptions['fromAddress'],
+                    emailOptions['toAddresses'], msg.as_string())
+    server.quit()
 
 def getInsertValue(value):
     returnVal = ''
@@ -198,9 +215,13 @@ postgres.executeNonQuery(connTabular,
 postgres.executeNonQuery(connTabular,
                          "CREATE INDEX tbl_search_trgm_idx_alias ON public.tbl_search USING gin (alias gin_trgm_ops);")
 postgres.executeNonQuery(connTabular,
-                         "CREATE INDEX tbl_search_trgm_idx_priority ON public.tbl_search USING gin (priority gin_trgm_ops);")
+                         "CREATE INDEX tbl_search_trgm_idx_priority ON public.tbl_search(priority);")
 
 connTabular.close()
 connWeblive.close()
 
+# SEND EMAIL IF WE HAVE ERRORS
+if len(errorString) > 0:
+    sendEmail("Search Processor Error", errorString)
 print("COMPLETE!")
+

@@ -16,7 +16,7 @@ CREATE TABLE public.tbl_search (
 );
 CREATE INDEX tbl_search_trgm_idx_alias ON public.tbl_search USING gin (name gin_trgm_ops);
 CREATE INDEX tbl_search_trgm_idx_name ON public.tbl_search USING gin (name gin_trgm_ops);
-CREATE INDEX tbl_search_trgm_idx_priority ON public.tbl_search USING gin (name gin_trgm_ops);
+CREATE INDEX tbl_search_trgm_idx_priority ON public.tbl_search(priority);
 
 CREATE TABLE public.tbl_search_layers (
 	id serial NOT NULL,
