@@ -1,31 +1,21 @@
+from re import split
 import postgres
 import requests
 import string
 import json
 from datetime import datetime
 import base64
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+import urllib.parse as urlparse
+from urllib.parse import parse_qs
+from xml.dom import minidom
+import xml.etree.ElementTree as ET
+import xmltodict
 
 with open('config.json') as config_json:
     data = json.load(config_json)
 
 fallbackMuniTable = data['fallbackMuniTable']
-emailOptions = data['email']
-errorString = ''
 
-def sendEmail(subject, body):
-    server = smtplib.SMTP(emailOptions['smtp'])
-
-    msg = MIMEMultipart()
-    msg['Subject'] = subject
-    msg.attach(MIMEText(body, 'html'))
-
-    # SEND
-    server.sendmail(emailOptions['fromAddress'],
-                    emailOptions['toAddresses'], msg.as_string())
-    server.quit()
 
 def getInsertValue(value):
     returnVal = ''
@@ -39,7 +29,7 @@ def getInsertValue(value):
     return returnVal
 
 
-def insertFeature(row, feature):
+def insertFeature(row, feature,isOpenData):
     # itemType = row['type'].encode('utf-8').title()
     itemType = row['type']
     typeId = row['type_id']
@@ -76,7 +66,7 @@ def insertFeature(row, feature):
     if (name == None):
         return "OK"
 
-    # SELECT muni FROM sde.sc_simcoectyjurisdictions where ST_Intersects(geom, ST_SetSRID(ST_GeomFromGeoJSON('{"type": "Point", "coordinates": [-8929107.2899, 5543302.053]}'), 3857));
+    # SELECT muni FROM public.sc_simcoectyjurisdictions where ST_Intersects(geom, ST_SetSRID(ST_GeomFromGeoJSON('{"type": "Point", "coordinates": [-8929107.2899, 5543302.053]}'), 3857));
     # GET MUNI IF WE DON'T HAVE ONE
     if (muniField == None and fallbackMuniTable != ""):
         muniSql = "SELECT muni FROM {0} where ST_Intersects(geom, ST_SetSRID(ST_GeomFromGeoJSON('{1}'), 3857));"
@@ -110,9 +100,9 @@ def insertFeature(row, feature):
         else:
             alias = None
 
-    insertSqlTemplate = """ INSERT INTO public.tbl_search (\"name\", alias, \"type\", type_id, municipality,geojson,geojson_extent,geojson_point, location_id,priority) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"""
+    insertSqlTemplate = """ INSERT INTO public.tbl_search (\"name\", alias, \"type\", type_id, municipality,geojson,geojson_extent,geojson_point, location_id,priority, is_open_data) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"""
     values = (getInsertValue(name), getInsertValue(alias),
-              getInsertValue(itemType), typeId, getInsertValue(muni), geometryGeojson, extentGeojson, pointGeojson, locationId, priority)
+              getInsertValue(itemType), typeId, getInsertValue(muni), geometryGeojson, extentGeojson, pointGeojson, locationId, priority, isOpenData)
     a = postgres.executeNonQuery(connTabular, insertSqlTemplate, values)
     return a
 
@@ -132,6 +122,23 @@ def dropIndex(conn, command):
     except:
         return False
 
+def isOpenData(wfsUrl):
+    try:
+        urlParsed = urlparse.urlparse(wfsUrl)
+        names = parse_qs(urlParsed.query)['typeNames'][0].split(":")
+        workspace = names[0]
+        name = names[1]
+        infoUrlTemplate = "https://opengis.simcoe.ca/geoserver/{0}/{1}/ows?service=wms&version=1.3.0&request=GetCapabilities"
+        infoUrl = infoUrlTemplate.format(workspace, name)
+        xmlResponse = requests.get(infoUrl).content
+        doc = xmltodict.parse(xmlResponse)
+        keywords = doc['WMS_Capabilities']['Capability']['Layer']['Layer']['KeywordList']['Keyword']
+        if "DOWNLOAD" in keywords:
+            return True
+        else:
+            return False
+    except:
+        return False
 
 connTabular = postgres.getConn('tabular')
 connWeblive = postgres.getConn('weblive')
@@ -155,6 +162,7 @@ for row in rows:
     wfsUrl = row['wfs_url']
     runSchedule = row['run_schedule']
 
+    isOpenDataVar = isOpenData(wfsUrl)
     if (runSchedule != 'ALWAYS'):
     # if (runSchedule != 'ONETIME'):
         continue
@@ -165,23 +173,15 @@ for row in rows:
     postgres.executeNonQuery(
         connTabular, """delete from public.tbl_search where type_id = %s""", (typeId,))
 
-    r = requests.get(url=wfsUrl, verify=True)
+    r = requests.get(url=wfsUrl, verify=False)
 
     # extracting data in json format
     data = r.json()
     features = data['features']
     for feature in features:
-        try:
-            queryOk = insertFeature(row, feature)
-        except (Exception) as error:
-            errorString += "Error: " + error +"<br/>"
-            errorString += "Error: " + error +"<br/>"
-            queryOk="ERROR"
-            print("Error: " + error)
-        finally:
-            if (queryOk != "OK"):
-                errorString += "Layer Type Id Failed: " + typeId + "<br/>"
-                print("Layer Type Id Failed: " + typeId)
+        queryOk = insertFeature(row, feature, isOpenDataVar)
+        if (queryOk != "OK"):
+            print("Layer Type Id Failed: " + typeId)
 
     endTime = datetime.now()
     minutes = (endTime - startTime).total_seconds() / 60
@@ -196,13 +196,11 @@ for row in rows:
 postgres.executeNonQuery(connTabular,
                          "CREATE INDEX tbl_search_trgm_idx_name ON public.tbl_search USING gin (name gin_trgm_ops);")
 postgres.executeNonQuery(connTabular,
-                         "CREATE INDEX tbl_search_trgm_idx_alias ON public.tbl_search USING gin (name gin_trgm_ops);")
+                         "CREATE INDEX tbl_search_trgm_idx_alias ON public.tbl_search USING gin (alias gin_trgm_ops);")
 postgres.executeNonQuery(connTabular,
-                         "CREATE INDEX tbl_search_trgm_idx_priority ON public.tbl_search USING gin (name gin_trgm_ops);")
+                         "CREATE INDEX tbl_search_trgm_idx_priority ON public.tbl_search USING gin (priority gin_trgm_ops);")
 
 connTabular.close()
 connWeblive.close()
-# SEND EMAIL IF WE HAVE ERRORS
-if len(errorString) > 0:
-    sendEmail("Search Processor Error", errorString)
+
 print("COMPLETE!")
