@@ -10,3 +10,5 @@ sc_copyToServer.bat
 settings.json
 runme.bat
 deploy
+database.ini
+/database.ini
