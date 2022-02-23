@@ -12,3 +12,4 @@ runme.bat
 deploy
 database.ini
 /database.ini
+__pycache__/postgres.cpython-37.pyc

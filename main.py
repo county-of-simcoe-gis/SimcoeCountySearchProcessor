@@ -14,7 +14,7 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
-with open('config.json') as config_json:
+with open('\\\\sunnyside\\c$\\GIS\\ScheduledTasks\\SimcoeCountySearchProcessor\\config.json') as config_json:
     data = json.load(config_json)
 
 fallbackMuniTable = data['fallbackMuniTable']
@@ -62,20 +62,22 @@ def insertFeature(row, feature,isOpenData):
     pointSql = None
     if geometryType == "Point":
         # BUFFER BY 1 METER TO RETURN A VALID EXTENT
-        extentSql = "SELECT ST_AsGeoJSON(ST_Extent(ST_Buffer(ST_GeomFromGeoJSON('{0}'), 1))) As geojson;"
+        extentSql = "SELECT ST_AsGeoJSON(ST_Extent(ST_Buffer(ST_GeomFromGeoJSON('{0}'), 1))) As geojson, ST_AsText(ST_Extent(ST_Buffer(ST_GeomFromGeoJSON('{0}'), 1))) As wkt_extent, ST_AsText(ST_GeomFromGeoJSON('{0}'), 1) As wkt;"
         pointGeojson = geometryGeojson
     else:
-        extentSql = "SELECT ST_AsGeoJSON(ST_Extent(ST_GeomFromGeoJSON('{0}'))) As geojson;"
-        pointSql = "SELECT ST_AsGeoJSON(fn_sc_find_geometry_center(ST_SetSRID(ST_GeomFromGeoJSON('{0}'), 3857))) As geojson;"
+        extentSql = "SELECT ST_AsGeoJSON(ST_Extent(ST_GeomFromGeoJSON('{0}'))) As geojson, ST_AsText(ST_Extent(ST_GeomFromGeoJSON('{0}'))) As wkt_extent, ST_AsText(ST_GeomFromGeoJSON('{0}')) As wkt;"
+        pointSql = "SELECT ST_AsGeoJSON(fn_sc_find_geometry_center(ST_SetSRID(ST_GeomFromGeoJSON('{0}'), 3857))) As geojson, ST_AsText(fn_sc_find_geometry_center(ST_SetSRID(ST_GeomFromGeoJSON('{0}'), 3857))) As wkt;"
 
-    extentRow = postgres.queryOne(
-        connWeblive, extentSql.format(geometryGeojson))
-    extentGeojson = extentRow['geojson']
+    extentRow = postgres.queryOne(connWeblive, extentSql.format(geometryGeojson))
+    extentGeojson = extentRow["geojson"]
+    extentWkt = extentRow["wkt_extent"]
+    geometryWkt = extentRow["wkt"]
+    pointWkt = extentRow["wkt"]
 
-    if (pointSql != None):
-        pointRow = postgres.queryOne(
-            connWeblive, pointSql.format(geometryGeojson))
-        pointGeojson = pointRow['geojson']
+    if pointSql != None:
+        pointRow = postgres.queryOne(connWeblive, pointSql.format(geometryGeojson))
+        pointGeojson = pointRow["geojson"]
+        pointWkt = pointRow["wkt"]
 
     # name = feature['properties'][nameField].encode('utf-8').title()
     # muni = feature['properties'][muniField].encode('utf-8').title()
@@ -117,9 +119,23 @@ def insertFeature(row, feature,isOpenData):
         else:
             alias = None
 
-    insertSqlTemplate = """ INSERT INTO public.tbl_search (\"name\", alias, \"type\", type_id, municipality,geojson,geojson_extent,geojson_point, location_id,priority, is_open_data) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"""
-    values = (getInsertValue(name), getInsertValue(alias),
-              getInsertValue(itemType), typeId, getInsertValue(muni), geometryGeojson, extentGeojson, pointGeojson, locationId, priority, isOpenData)
+    insertSqlTemplate = """ INSERT INTO public.tbl_search (\"name\", alias, \"type\", type_id, municipality,geojson,geojson_extent,geojson_point, location_id,priority, is_open_data, wkt, wkt_extent, wkt_point) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"""
+    values = (
+        getInsertValue(name),
+        getInsertValue(alias),
+        getInsertValue(itemType),
+        typeId,
+        getInsertValue(muni),
+        geometryGeojson,
+        extentGeojson,
+        pointGeojson,
+        locationId,
+        priority,
+        isOpenData,
+        geometryWkt,
+        extentWkt,
+        pointWkt,
+    )
     a = postgres.executeNonQuery(connTabular, insertSqlTemplate, values)
     return a
 
